@@ -1,5 +1,13 @@
 #!/usr/bin/env node
-require("dotenv").config();
+const path = require("path");
+const dotenvAbsolutePath = path.join(__dirname, '.env');
+
+const dotenv = require('dotenv').config({
+    path: dotenvAbsolutePath
+});
+if (dotenv.error) {
+    throw dotenv.error;
+}
 const program = require("caporal");
 const request = require("superagent");
 const isToday = require("date-fns/isToday");
@@ -7,8 +15,6 @@ const isTomorrow = require("date-fns/isTomorrow");
 const dateFormat = require("date-fns/format");
 const chalk = require("chalk");
 const Table = require("cli-table3");
-
-const test = {"city":{"id":2657678,"name":"Addington","coord":{"lat":51.35,"lon":-0.0334},"country":"GB","timezone":0,"sunrise":1577520292,"sunset":1577548672},"weather":[{"dt":1577577600,"main":{"temp":6.75,"feels_like":4.38,"temp_min":5.79,"temp_max":6.75,"pressure":1036,"sea_level":1036,"grnd_level":1032,"humidity":93,"temp_kf":0.96},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04n"}],"clouds":{"all":100},"wind":{"speed":1.98,"deg":179},"sys":{"pod":"n"},"dt_txt":"2019-12-29 00:00:00"},{"dt":1577588400,"main":{"temp":6.59,"feels_like":3.51,"temp_min":5.87,"temp_max":6.59,"pressure":1035,"sea_level":1035,"grnd_level":1030,"humidity":92,"temp_kf":0.72},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04n"}],"clouds":{"all":90},"wind":{"speed":2.9,"deg":181},"sys":{"pod":"n"},"dt_txt":"2019-12-29 03:00:00"},{"dt":1577599200,"main":{"temp":5.72,"feels_like":3.42,"temp_min":5.24,"temp_max":5.72,"pressure":1035,"sea_level":1035,"grnd_level":1031,"humidity":93,"temp_kf":0.48},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04n"}],"clouds":{"all":95},"wind":{"speed":1.59,"deg":178},"sys":{"pod":"n"},"dt_txt":"2019-12-29 06:00:00"},{"dt":1577610000,"main":{"temp":5.84,"feels_like":2.59,"temp_min":5.6,"temp_max":5.84,"pressure":1034,"sea_level":1034,"grnd_level":1030,"humidity":84,"temp_kf":0.24},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04d"}],"clouds":{"all":100},"wind":{"speed":2.58,"deg":174},"sys":{"pod":"d"},"dt_txt":"2019-12-29 09:00:00"},{"dt":1577620800,"main":{"temp":7.66,"feels_like":3.61,"temp_min":7.66,"temp_max":7.66,"pressure":1034,"sea_level":1034,"grnd_level":1030,"humidity":70,"temp_kf":0},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04d"}],"clouds":{"all":100},"wind":{"speed":3.52,"deg":190},"sys":{"pod":"d"},"dt_txt":"2019-12-29 12:00:00"},{"dt":1577631600,"main":{"temp":7.74,"feels_like":4.23,"temp_min":7.74,"temp_max":7.74,"pressure":1032,"sea_level":1032,"grnd_level":1028,"humidity":70,"temp_kf":0},"weather":[{"id":803,"main":"Clouds","description":"broken clouds","icon":"04d"}],"clouds":{"all":72},"wind":{"speed":2.78,"deg":199},"sys":{"pod":"d"},"dt_txt":"2019-12-29 15:00:00"},{"dt":1577642400,"main":{"temp":6.01,"feels_like":2.72,"temp_min":6.01,"temp_max":6.01,"pressure":1032,"sea_level":1032,"grnd_level":1028,"humidity":75,"temp_kf":0},"weather":[{"id":803,"main":"Clouds","description":"broken clouds","icon":"04n"}],"clouds":{"all":69},"wind":{"speed":2.29,"deg":192},"sys":{"pod":"n"},"dt_txt":"2019-12-29 18:00:00"},{"dt":1577653200,"main":{"temp":5.43,"feels_like":2.06,"temp_min":5.43,"temp_max":5.43,"pressure":1032,"sea_level":1032,"grnd_level":1028,"humidity":75,"temp_kf":0},"weather":[{"id":800,"main":"Clear","description":"clear sky","icon":"01n"}],"clouds":{"all":0},"wind":{"speed":2.28,"deg":203},"sys":{"pod":"n"},"dt_txt":"2019-12-29 21:00:00"}]};
 
 const getPublicIp = async () => {
     const publicIp = require("public-ip");

@@ -8,6 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "pkg --out-path bin ."
   },
+  "pkg": {
+    "assets": ".env"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/a-vorontsov/weather-cli.git"
