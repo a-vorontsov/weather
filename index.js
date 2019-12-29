@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 const path = require("path");
 const dotenvAbsolutePath = path.join(__dirname, '.env');
-
 const dotenv = require('dotenv').config({
     path: dotenvAbsolutePath
 });
 if (dotenv.error) {
     throw dotenv.error;
 }
+
 const program = require("caporal");
 const request = require("superagent");
 const isToday = require("date-fns/isToday");
@@ -16,69 +16,145 @@ const dateFormat = require("date-fns/format");
 const chalk = require("chalk");
 const Table = require("cli-table3");
 
+const error = chalk.redBright.bold;
+
+const TABLE_OPTIONS = {
+    colWidths: [16],
+    style: {
+        border:[],
+        head:[],
+        "padding-left": 0,
+        "padding-right": 2
+    },
+    chars: {
+        "top": "",
+        "top-mid": "",
+        "top-left": "",
+        "top-right": "",
+        "bottom": "",
+        "bottom-mid": "",
+        "bottom-left": "",
+        "bottom-right": "",
+        "left": "",
+        "left-mid": "",
+        "mid": "",
+        "mid-mid": "",
+        "right": "",
+        "right-mid": "",
+        "middle": ""
+    }
+};
+
 const getPublicIp = async () => {
     const publicIp = require("public-ip");
-    const ip = await publicIp.v4();
-
-    return ip;
+    try {
+        const ip = await publicIp.v4();
+        return ip;
+    } catch (err) {
+        console.log(error("You are not connected to the internet."));
+        process.exit(1);
+    }
 }
 
 const getLocalLatLng = async () => {
     const geoIp = require("geoip-lite");
 
-    const ip = await getPublicIp();
-    const ll = geoIp.lookup(ip).ll;
+    try {
+        const ip = await getPublicIp();
+        const ll = geoIp.lookup(ip).ll;
 
-    return {
-        lat: ll[0],
-        lng: ll[1]
-    };
+        return {
+            lat: ll[0],
+            lng: ll[1]
+        };
+    } catch (err) {
+        console.log(error("There was an issue with getting your location."));
+        console.log(error("Please make sure you are connected to the internet."));
+        process.exit(1);
+    }
 }
 
-const getCurrentWeatherLatLng = async (lat, lng) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    return res.body;
+const latLngErrorHandle = (error) => {
+    if (error.code === "ENOTFOUND") {
+        console.log(error("You are not connected to the internet."));
+        process.exit(1);
+    } else {
+        console.error(error);
+        process.exit(1);
+    }
 }
 
-const getTodayWeatherLatLng = async (lat, lng) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => isToday(new Date(i.dt_txt)));
-    return {city: res.body.city, weather};
+const getWeatherLatLng = async (lat, lng, forecast) => {
+    try {
+        let res;
+        if (forecast === "now") {
+            res = await request.get(`http://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
+        } else {
+            res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
+        }
+        let weather;
+        switch (forecast) {
+            case "now":
+                return res.body;
+            case "today":
+                weather = res.body.list.filter(i => isToday(new Date(i.dt_txt)));
+                break;
+            case "tomorrow":
+                weather = res.body.list.filter(i => isTomorrow(new Date(i.dt_txt)));
+                break;
+            case "week":
+                weather = res.body.list.filter(i => new Date(i.dt_txt).getHours() === 12);
+                break;
+        }
+        return {city: res.body.city, weather};
+    } catch (err) {
+        latLngErrorHandle(err);
+    }
 }
 
-const getTomorrowWeatherLatLng = async (lat, lng) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => isTomorrow(new Date(i.dt_txt)));
-    return {city: res.body.city, weather};
+const cityErrorHandle = (error) => {
+    if (err.code === "ENOTFOUND") {
+        console.log(error("You are not connected to the internet."));
+        process.exit(1);
+    }
+    switch (err.response.status) {
+        case 404:
+            console.log(`Error: ${error(err.response.body.message)}`);
+            console.log("Please make sure you have the correct spelling");
+            break;
+        default:
+            console.log("An error has occurred.");
+            console.log(error(err.response.body.message));
+    }
+    process.exit(1);
 }
 
-const getWeekWeatherLatLng = async (lat, lng) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => new Date(i.dt_txt).getHours() === 12);
-    return {city: res.body.city, weather};
-}
-
-const getCurrentWeatherCity = async (city) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    return res.body;
-}
-
-const getTodayWeatherCity = async (city) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => isToday(new Date(i.dt_txt)));
-    return {city: res.body.city, weather};
-}
-
-const getTomorrowWeatherCity = async (city) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => isTomorrow(new Date(i.dt_txt)));
-    return {city: res.body.city, weather};
-}
-
-const getWeekWeatherCity = async (city) => {
-    const res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
-    const weather = res.body.list.filter(i => new Date(i.dt_txt).getHours() === 12);
-    return {city: res.body.city, weather};
+const getWeatherCity = async (city, forecast) => {
+    try {
+        let res;
+        if (forecast === "now") {
+            res = await request.get(`http://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
+        } else {
+            res = await request.get(`http://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${process.env.WEATHER_API_KEY}`);
+        }
+        let weather;
+        switch (forecast) {
+            case "now":
+                return res.body;
+            case "today":
+                weather = res.body.list.filter(i => isToday(new Date(i.dt_txt)));
+                break;
+            case "tomorrow":
+                weather = res.body.list.filter(i => isTomorrow(new Date(i.dt_txt)));
+                break;
+            case "week":
+                weather = res.body.list.filter(i => new Date(i.dt_txt).getHours() === 12);
+                break;
+        }
+        return {city: res.body.city, weather};
+    } catch (err) {
+        cityErrorHandle(err);
+    }
 }
 
 const getTemperatureColour = (temp) => {
@@ -113,32 +189,7 @@ const displayCurrentWeather = (input) => {
     const minColour = getTemperatureColour(temp_min);
     const maxColour = getTemperatureColour(temp_max);
 
-    const table = new Table({
-        colWidths: [16],
-        style: {
-            border:[],
-            head:[],
-            "padding-left": 0,
-            "padding-right": 2
-        },
-        chars: {
-            "top": "",
-            "top-mid": "",
-            "top-left": "",
-            "top-right": "",
-            "bottom": "",
-            "bottom-mid": "",
-            "bottom-left": "",
-            "bottom-right": "",
-            "left": "",
-            "left-mid": "",
-            "mid": "",
-            "mid-mid": "",
-            "right": "",
-            "right-mid": "",
-            "middle": ""
-        }
-    });
+    const table = new Table(TABLE_OPTIONS);
 
     table.push(
         {"Location:": chalk.whiteBright.bold(input.name)},
@@ -153,40 +204,8 @@ const displayCurrentWeather = (input) => {
     console.log(table.toString());
 }
 
-const displayDayWeather = (input) => {
+const formatDayWeather = (input, table) => {
     const {weather, city} = input;
-
-    if (weather.length === 0) {
-        console.log(chalk.redBright.bold(`Cannot get 3 hour weather for ${city.name}. Try using 'weather <city> tomorrow' or 'weather <city> now'.`));
-        return;
-    }
-
-    const table = new Table({
-        colWidths: [16],
-        style: {
-            border:[],
-            head:[],
-            "padding-left": 0,
-            "padding-right": 2
-        },
-        chars: {
-            "top": "",
-            "top-mid": "",
-            "top-left": "",
-            "top-right": "",
-            "bottom": "",
-            "bottom-mid": "",
-            "bottom-left": "",
-            "bottom-right": "",
-            "left": "",
-            "left-mid": "",
-            "mid": "",
-            "mid-mid": "",
-            "right": "",
-            "right-mid": "",
-            "middle": ""
-        }
-    });
 
     const weatherFormatted = {
         time: [],
@@ -220,43 +239,11 @@ const displayDayWeather = (input) => {
         {"Humidity:": weatherFormatted.humidity}
     );
 
-    console.log(table.toString());
+    return table;
 }
 
-const displayWeekWeather = (input) => {
+const formatWeekWeather = (input, table) => {
     const {weather, city} = input;
-
-    if (weather.length === 0) {
-        console.log(chalk.redBright.bold(`Cannot get week weather for ${city.name}. Try using 'weather <city> now|today|tomorrow'.`));
-        return;
-    }
-
-    const table = new Table({
-        colWidths: [16],
-        style: {
-            border:[],
-            head:[],
-            "padding-left": 0,
-            "padding-right": 2
-        },
-        chars: {
-            "top": "",
-            "top-mid": "",
-            "top-left": "",
-            "top-right": "",
-            "bottom": "",
-            "bottom-mid": "",
-            "bottom-left": "",
-            "bottom-right": "",
-            "left": "",
-            "left-mid": "",
-            "mid": "",
-            "mid-mid": "",
-            "right": "",
-            "right-mid": "",
-            "middle": ""
-        }
-    });
 
     const weatherFormatted = {
         date: [],
@@ -289,88 +276,54 @@ const displayWeekWeather = (input) => {
         {"Humidity:": weatherFormatted.humidity}
     );
 
+    return table;
+}
+
+const displayMultiValueWeather = (input, type) => {
+    const {weather, city} = input;
+
+    if (weather.length === 0) {
+        switch (type) {
+            case "hourly":
+                console.log(error(`Cannot get 3 hour weather for ${city.name}. Try using 'weather <city> tomorrow' or 'weather <city> now'.`));
+                break;
+            case "daily":
+                console.log(error(`Cannot get week weather for ${city.name}. Try using 'weather <city> now|today|tomorrow'.`));
+                break;
+        }
+        process.exit(1);
+    }
+
+    let table = new Table(TABLE_OPTIONS);
+
+    switch (type) {
+        case "hourly":
+            table = formatDayWeather(input, table);
+            break;
+        case "daily":
+            table = formatWeekWeather(input, table);
+            break;
+    }
+
     console.log(table.toString());
 }
 
-const getForecast = async (logger, location, forecast) => {
-    if (location === "here") {
-        try {
-            const {lat, lng} = await getLocalLatLng();
-            let res;
-            switch (forecast) {
-                case "now":
-                    res = await getCurrentWeatherLatLng(lat, lng);
-                    displayCurrentWeather(res);
-                    break;
-                case "today":
-                    res = await getTodayWeatherLatLng(lat, lng);
-                    displayDayWeather(res);
-                    break;
-                case "tomorrow":
-                    res = await getTomorrowWeatherLatLng(lat, lng);
-                    displayDayWeather(res);
-                    break;
-                case "week":
-                    res = await getWeekWeatherLatLng(lat, lng);
-                    displayWeekWeather(res);
-                    break;
-            }
-        } catch (err) {
-            logger.error(err);
-            process.exit(1);
-        }
-    } else if (/^now|today|tomorrow|week$/.test(location)) {
-        try {
-            const {lat, lng} = await getLocalLatLng();
-            let res;
+const getForecast = async (location, forecast) => {
+    let res;
+    if (/^here|now|today|tomorrow|week$/.test(location)) {
+        const {lat, lng} = await getLocalLatLng();
+        if (/^now|today|tomorrow|week$/.test(location)) {
             forecast = location;
-            switch (forecast) {
-                case "now":
-                    res = await getCurrentWeatherLatLng(lat, lng);
-                    displayCurrentWeather(res);
-                    break;
-                case "today":
-                    res = await getTodayWeatherLatLng(lat, lng);
-                    displayDayWeather(res);
-                    break;
-                case "tomorrow":
-                    res = await getTomorrowWeatherLatLng(lat, lng);
-                    displayDayWeather(res);
-                    break;
-                case "week":
-                    res = await getWeekWeatherLatLng(lat, lng);
-                    displayWeekWeather(res);
-                    break;
-            }
-        } catch (err) {
-            logger.error(err);
-            process.exit(1);
         }
+        res = await getWeatherLatLng(lat, lng, forecast);
     } else {
-        try {
-            let res;
-            switch (forecast) {
-                case "now":
-                    res = await getCurrentWeatherCity(location);
-                    displayCurrentWeather(res);
-                    break;
-                case "today":
-                    res = await getTodayWeatherCity(location);
-                    displayDayWeather(res);
-                    break;
-                case "tomorrow":
-                    res = await getTomorrowWeatherCity(location);
-                    displayDayWeather(res);
-                    break;
-                case "week":
-                    res = await getWeekWeatherCity(location);
-                    displayWeekWeather(res);
-                    break;
-            }
-        } catch (err) {
-            logger.error(err);
-            process.exit(1);
-        }
+        res = await getWeatherCity(location, forecast);
+    }
+    if (forecast === "now") {
+        displayCurrentWeather(res);
+    } else {
+        const valueType = (forecast === "week") ? "daily" : "hourly";
+        displayMultiValueWeather(res, valueType);
     }
 }
 
@@ -381,8 +334,8 @@ program
     .description("Command line tool to get the weather forecast")
     .argument("[location]", "City name to get weather forecast. Use 'here' to get weather for current location. Enclose city names with spaces in \"\"", program.STRING, "here")
     .argument("[forecast type]", "Type of weather to get. Options are: [now, today, tomorrow, week]", /^now|today|tomorrow|week$/, "now")
-    .action(async (args, _, logger) => {
-        await getForecast(logger, args.location.toLowerCase(), args.forecastType.toLowerCase());
+    .action(async (args) => {
+        await getForecast(args.location.toLowerCase(), args.forecastType.toLowerCase());
     });
 
 program.parse(process.argv);
