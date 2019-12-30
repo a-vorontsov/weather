@@ -74,12 +74,12 @@ const getLocalLatLng = async () => {
     }
 }
 
-const latLngErrorHandle = (error) => {
-    if (error.code === "ENOTFOUND") {
+const latLngErrorHandle = (err) => {
+    if (err.code === "ENOTFOUND") {
         console.log(error("You are not connected to the internet."));
         process.exit(1);
     } else {
-        console.error(error);
+        console.error(err);
         process.exit(1);
     }
 }
@@ -112,7 +112,7 @@ const getWeatherLatLng = async (lat, lng, forecast) => {
     }
 }
 
-const cityErrorHandle = (error) => {
+const cityErrorHandle = (err) => {
     if (err.code === "ENOTFOUND") {
         console.log(error("You are not connected to the internet."));
         process.exit(1);
