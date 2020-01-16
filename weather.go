@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
 
-	docopt "github.com/docopt/docopt-go"
+	"github.com/docopt/docopt-go"
 	"github.com/fatih/color"
 	"github.com/tidwall/gjson"
 
@@ -28,32 +29,111 @@ Options:
   -h --help     Show this screen.
   --no-colour   Disable colour output.`
 
+type CurrentWeather struct {
+	Weather []struct {
+		Description string `json:"description"`
+	} `json:"weather"`
+	Main struct {
+		Temp      float64 `json:"temp"`
+		FeelsLike float64 `json:"feels_like"`
+		TempMin   int     `json:"temp_min"`
+		TempMax   int     `json:"temp_max"`
+		Humidity  int     `json:"humidity"`
+	} `json:"main"`
+	Wind struct {
+		Speed float64 `json:"speed"`
+	} `json:"wind"`
+	Name string `json:"name"`
+}
+
+type DayWeather struct {
+	List []struct {
+		Main struct {
+			Temp      int     `json:"temp"`
+			FeelsLike float64 `json:"feels_like"`
+			Humidity  int     `json:"humidity"`
+		} `json:"main"`
+		Weather []struct {
+			Description string `json:"description"`
+		} `json:"weather"`
+		Wind struct {
+			Speed float64 `json:"speed"`
+		} `json:"wind"`
+		DtTxt string `json:"dt_txt"`
+	} `json:"list"`
+	City struct {
+		Name string `json:"name"`
+	} `json:"city"`
+}
+
 func printError(errorMessage string) {
 	e := color.New(color.FgRed, color.Bold)
 	e.Println(errorMessage)
 	os.Exit(1)
 }
 
-func getCoords() (float64, float64) {
-	resp, err := http.Get("http://freegeoip.app/json/")
+func getCoords() (string, string) {
+	res, err := http.Get("http://freegeoip.app/json/")
 	if err != nil {
 		printError("There was an error getting your location. Please make sure you're connected to the internet")
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 	results := gjson.GetMany(string(body), "latitude", "longitude")
-	return results[0].Float(), results[1].Float()
+	return results[0].String(), results[1].String()
 }
 
-func getWeatherLatLng(lat float64, lng float64, forecast string) {
-	// WEATHER_API_KEY := os.Getenv("WEATHER_API_KEY")
+func getWeatherLatLng(lat string, lng string, forecast string) string {
+	WEATHER_API_KEY := os.Getenv("WEATHER_API_KEY")
+	var format string
+	if forecast == "now" {
+		format = "weather"
+	} else {
+		format = "forecast"
+	}
+	res, err := http.Get(fmt.Sprintf("http://api.openweathermap.org/data/2.5/%s?lat=%s&lon=%s&units=metric&appid=%s", format, lat, lng, WEATHER_API_KEY))
+	if err != nil {
+		printError("There was an error getting the weather for your current location. Make sure you're connected to the Internet.\nContact the developers if the issue persists.")
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		printError("There was an error getting the weather for your current location. Make sure you're connected to the Internet.\nContact the developers if the issue persists.")
+	}
+	m, ok := gjson.Parse(string(body)).Value().(map[string]interface{})
+	return m
 }
 
 func getWeatherCity(location string, forecast string) {
 	// WEATHER_API_KEY := os.Getenv("WEATHER_API_KEY")
 }
 
-func getTemperatureColour() {}
+func getTemperatureColour(temp float32) *color.Color {
+	if temp < 0 {
+		return color.New(color.FgBlue, color.Bold)
+	} else if temp < 5 {
+		return color.New(color.FgHiBlue, color.Bold)
+	} else if temp < 10 {
+		return color.New(color.FgCyan, color.Bold)
+	} else if temp < 15 {
+		return color.New(color.FgHiCyan, color.Bold)
+	} else if temp < 20 {
+		return color.New(color.FgGreen, color.Bold)
+	} else if temp < 25 {
+		return color.New(color.FgHiGreen, color.Bold)
+	} else if temp < 30 {
+		return color.New(color.FgYellow, color.Bold)
+	} else if temp < 35 {
+		return color.New(color.FgHiYellow, color.Bold)
+	} else if temp < 40 {
+		return color.New(color.FgRed, color.Bold)
+	} else {
+		return color.New(color.FgWhite, color.Bold)
+	}
+}
 
 func displayCurrentWeather() {}
 
@@ -69,7 +149,7 @@ func getForecast(location string, forecast string) {
 		if location != "here" {
 			forecast = location
 		}
-		getWeatherLatLng(lat, lng, forecast)
+		println(getWeatherLatLng(lat, lng, forecast))
 	} else {
 		getWeatherCity(location, forecast)
 	}
@@ -109,7 +189,5 @@ func main() {
 	println(location)
 	println(forecast)
 
-	lat, lng := getCoords()
-	println(lat)
-	println(lng)
+	getForecast(location, forecast)
 }
