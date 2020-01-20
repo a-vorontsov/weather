@@ -12,6 +12,5 @@ skipExt       = @["nim"]
 # Dependencies
 requires "nim >= 1.0.4"
 requires "dotenv >= 1.1.1"
-requires "rainbow >= 0.2.2"
 requires "nap >= 1.5.1"
 requires "colorize >= 0.2.0"
