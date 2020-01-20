@@ -1,10 +1,8 @@
 when isMainModule:
-    import httpclient, times, os, strformat, dotenv, json, strutils, nap, re,
+    import httpclient, times, os, strformat, json, strutils, nap, re,
             colorize, sequtils, table, math, rdstdin, util
-    let env = initDotEnv()
-    env.load()
 
-    let WEATHER_API_KEY = os.getEnv("WEATHER_API_KEY")
+    const WEATHER_API_KEY = os.getEnv("WEATHER_API_KEY")
     var locationPermissions = false
 
     proc ctrlc() {.noconv.} =
