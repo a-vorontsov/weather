@@ -4,6 +4,7 @@ when isMainModule:
 
     const WEATHER_API_KEY = os.getEnv("WEATHER_API_KEY")
     var locationPermissions = false
+    var locationCity: string
 
     proc ctrlc() {.noconv.} =
         quit("exiting...", 1)
@@ -55,7 +56,7 @@ when isMainModule:
 
             coords
         except Exception:
-            quit("Error: Unable to get your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".bold.fgRed, 1)
+            quit("Error: Unable to get your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".fgRed, 1)
 
     proc getWeatherLatLng(lat: float, lng: float, forecast: string): JsonNode =
         var res: JsonNode
@@ -65,7 +66,7 @@ when isMainModule:
         try:
             response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?lat={lat}&lon={lng}&units=metric&appid={WEATHER_API_KEY}")
         except Exception:
-            quit("Error: Unable to get weather for your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".bold.fgRed, 1)
+            quit("Error: Unable to get weather for your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".fgRed, 1)
         client.close()
         res = parseJson(response)
 
@@ -94,7 +95,7 @@ when isMainModule:
         except HttpRequestError:
             quit((fmt"Error: Location '{location}' not found. Please make sure you have the correct spelling.").fgRed, 1)
         except Exception:
-            quit((fmt"Error: Unable to get weather for '{location}'. Please make sure you're connected to the internet."&"\nIf this error persists, contact the developers.").bold.fgRed, 1)
+            quit((fmt"Error: Unable to get weather for '{location}'. Please make sure you're connected to the internet."&"\nIf this error persists, contact the developers.").fgRed, 1)
         client.close()
         res = parseJson(response)
 
@@ -111,7 +112,7 @@ when isMainModule:
             of "week":
                 weather = res["list"].filterIt(
                     isMidday(fromUnix(it["dt"].getInt()).utc))
-        return %*{"city": res["city"], "weather": weather}
+        return %*{"weather": weather}
 
     proc displayCurrentWeather(input: JsonNode) =
         let weather = input["weather"]
@@ -128,7 +129,6 @@ when isMainModule:
         let maxColour = tempMax.getTemperatureColour
 
         let table = newAsciiTable()
-        table.addRow(@["Location:", input["name"].getStr().fgWhite.bold])
         table.addRow(@["Weather:", weather[0]["description"].getStr().fgWhite.bold])
         table.addRow(@["Temperature:", tempColour("●") & " " & tempColour(
                 fmt"{round(temp)}°C")])
@@ -144,7 +144,6 @@ when isMainModule:
     proc formatWeather(input: JsonNode, table: ref AsciiTable,
             formatWeek: bool): ref AsciiTable =
         let weather = input["weather"]
-        let city = input["city"]["name"].getStr()
 
         let weatherFormatted = newFormattedWeather()
         if formatWeek:
@@ -181,7 +180,6 @@ when isMainModule:
             weatherFormatted.humidity.add(
                 ($d["main"]["humidity"] & "%").fgWhite.bold)
 
-        table.addRow(@["Location:", city.fgWhite.bold])
         if not formatWeek:
             table.addRow(@["Date:",
                            format(
@@ -200,13 +198,12 @@ when isMainModule:
 
     proc displayMultiValueWeather(input: JsonNode, formatWeek: bool) =
         let weather = input["weather"]
-        let city = input["city"]["name"].getStr()
 
         if weather.len == 0:
             if formatWeek:
-                quit(fmt"Cannot get week weather for {city}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
+                quit(fmt"Cannot get week weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
             else:
-                quit(fmt"Cannot get 3 hour weather for {city}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
+                quit(fmt"Cannot get 3 hour weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
 
         let table = formatWeather(input, newAsciiTable(), formatWeek)
 
@@ -221,6 +218,7 @@ when isMainModule:
             let coords: Coords = getGeoLocation()
             res = getWeatherLatLng(coords.latitude, coords.longitude, fcast)
         else:
+            locationCity = location
             res = getWeatherCity(location, fcast)
 
         if (fcast == "now"):
