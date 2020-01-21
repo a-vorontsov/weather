@@ -61,7 +61,11 @@ when isMainModule:
         var res: JsonNode
         var client = newHttpClient()
         var weatherType = if (forecast == "now"): "weather" else: "forecast"
-        let response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?lat={lat}&lon={lng}&units=metric&appid={WEATHER_API_KEY}")
+        var response: string
+        try:
+            response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?lat={lat}&lon={lng}&units=metric&appid={WEATHER_API_KEY}")
+        except Exception:
+            quit("Error: Unable to get weather for your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".bold.fgRed, 1)
         client.close()
         res = parseJson(response)
 
@@ -89,6 +93,8 @@ when isMainModule:
             response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?q={location}&units=metric&appid={WEATHER_API_KEY}")
         except HttpRequestError:
             quit((fmt"Error: Location '{location}' not found. Please make sure you have the correct spelling.").fgRed, 1)
+        except Exception:
+            quit((fmt"Error: Unable to get weather for '{location}'. Please make sure you're connected to the internet."&"\nIf this error persists, contact the developers.").bold.fgRed, 1)
         client.close()
         res = parseJson(response)
 
@@ -208,11 +214,11 @@ when isMainModule:
 
     proc getForecast(location: string, forecast: string) =
         var res: JsonNode
-        let coords: Coords = getGeoLocation()
         var fcast = forecast
         if (match(location, re"^here|now|today|tomorrow|week$")):
             if location != "here":
                 fcast = location
+            let coords: Coords = getGeoLocation()
             res = getWeatherLatLng(coords.latitude, coords.longitude, fcast)
         else:
             res = getWeatherCity(location, fcast)
