@@ -1,10 +1,11 @@
 when isMainModule:
     import httpclient, times, os, strformat, json, strutils, nap, re,
-            colorize, sequtils, table, math, rdstdin, util
+            colorize, sequtils, table, math, rdstdin, util, distros
 
     const WEATHER_API_KEY = os.getEnv("WEATHER_API_KEY")
     var locationPermissions = false
     var locationCity: string
+    var disableColour = false
 
     proc ctrlc() {.noconv.} =
         quit("exiting...", 1)
@@ -139,7 +140,7 @@ when isMainModule:
         table.addRow(@["Wind Speed:", windSpeed.fgWhite.bold & "m/s"])
         table.addRow(@["Humidity:", humidity.fgWhite.bold & "%"])
 
-        printTable(table)
+        table.printTable(disableColour)
 
     proc formatWeather(input: JsonNode, table: ref AsciiTable,
             formatWeek: bool): ref AsciiTable =
@@ -207,7 +208,7 @@ when isMainModule:
 
         let table = formatWeather(input, newAsciiTable(), formatWeek)
 
-        table.printTable()
+        table.printTable(disableColour)
 
     proc getForecast(location: string, forecast: string) =
         var res: JsonNode
@@ -250,6 +251,7 @@ when isMainModule:
                 required = false, help = "Allow location permissions", alt = "y")
         let help = use_arg(name = "help", kind = "flag", required = false,
                 help = "Display help", alt = "h")
+        let noColour = use_arg(name = "no-colour", kind = "flag", required = false, help = "Disable colour output")
 
         parse_args()
 
@@ -263,6 +265,9 @@ when isMainModule:
         if help.used:
             print_help()
             quit(0)
+        disableColour = noColour.used
+        if detectOs(Windows):
+            disableColour = true
 
         getForecast(location.value, forecast.value)
 

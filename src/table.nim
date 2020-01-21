@@ -63,14 +63,18 @@ proc calculateWidths(this: ref AsciiTable) =
 proc addRow*(this: ref AsciiTable, row: seq[string]) =
     this.rows.add(row)
 
-proc render*(this: ref AsciiTable): string =
+proc render*(this: ref AsciiTable, disableColour: bool): string =
     this.calculateWidths()
     for r in this.rows:
         for colidx, c in r:
-            let cell = newCell(c, leftpad = 0, rightpad = 2)
+            var cell: ref Cell
+            if disableColour:
+                cell = newCell(replace(c, re"\x1B\[[0-9]*m"), leftpad = 0, rightpad = 2)
+            else:
+                cell = newCell(c, leftpad = 0, rightpad = 2)
             result &= $cell & " ".repeat(max(COLUMN_WIDTH-cell.len, 0))
         if r != this.rows[this.rows.len-1]:
             result &= "\n"
 
-proc printTable*(this: ref AsciiTable) =
-    echo this.render()
+proc printTable*(this: ref AsciiTable, disableColour = false) =
+    echo this.render(disableColour)
