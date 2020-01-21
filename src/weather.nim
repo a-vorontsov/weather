@@ -42,9 +42,9 @@ when isMainModule:
                     permissions = readLineFromStdin("Please enter a valid answer. [y/n]: ")
 
                 if permissions != "y":
-                    quit("Error: Can't get weather for your current location due to insufficient permissions.".fgRed, 1)
+                    quit("Error: Can't get weather for your current location due to insufficient permissions.", 1)
             except IOError:
-                quit("Error: Can't get weather for your current location due to insufficient permissions.".fgRed, 1)
+                quit("Error: Can't get weather for your current location due to insufficient permissions.", 1)
 
         try:
             var client = newHttpClient()
@@ -57,7 +57,7 @@ when isMainModule:
 
             coords
         except Exception:
-            quit("Error: Unable to get your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".fgRed, 1)
+            quit("Error: Unable to get your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.", 1)
 
     proc getWeatherLatLng(lat: float, lng: float, forecast: string): JsonNode =
         var res: JsonNode
@@ -67,7 +67,7 @@ when isMainModule:
         try:
             response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?lat={lat}&lon={lng}&units=metric&appid={WEATHER_API_KEY}")
         except Exception:
-            quit("Error: Unable to get weather for your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.".fgRed, 1)
+            quit("Error: Unable to get weather for your current location. Please make sure you're connected to the internet.\nIf this error persists, contact the developers.", 1)
         client.close()
         res = parseJson(response)
 
@@ -94,9 +94,9 @@ when isMainModule:
         try:
             response = client.getContent(fmt"https://api.openweathermap.org/data/2.5/{weatherType}?q={location}&units=metric&appid={WEATHER_API_KEY}")
         except HttpRequestError:
-            quit((fmt"Error: Location '{location}' not found. Please make sure you have the correct spelling.").fgRed, 1)
+            quit((fmt"Error: Location '{location}' not found. Please make sure you have the correct spelling."), 1)
         except Exception:
-            quit((fmt"Error: Unable to get weather for '{location}'. Please make sure you're connected to the internet."&"\nIf this error persists, contact the developers.").fgRed, 1)
+            quit((fmt"Error: Unable to get weather for '{location}'. Please make sure you're connected to the internet."&"\nIf this error persists, contact the developers."), 1)
         client.close()
         res = parseJson(response)
 
@@ -202,9 +202,9 @@ when isMainModule:
 
         if weather.len == 0:
             if formatWeek:
-                quit(fmt"Cannot get week weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
+                quit(fmt"Cannot get week weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.", 1)
             else:
-                quit(fmt"Cannot get 3 hour weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.".fgRed, 1)
+                quit(fmt"Cannot get 3 hour weather for {locationCity}. Try using 'weather <city> tomorrow' or 'weather <city> now'.", 1)
 
         let table = formatWeather(input, newAsciiTable(), formatWeek)
 
@@ -251,7 +251,8 @@ when isMainModule:
                 required = false, help = "Allow location permissions", alt = "y")
         let help = use_arg(name = "help", kind = "flag", required = false,
                 help = "Display help", alt = "h")
-        let noColour = use_arg(name = "no-colour", kind = "flag", required = false, help = "Disable colour output")
+        let noColour = use_arg(name = "no-colour", kind = "flag",
+                required = false, help = "Disable colour output")
 
         parse_args()
 
@@ -259,7 +260,7 @@ when isMainModule:
             print_header()
             quit(0)
         if not match(forecast.value, re"^now|today|tomorrow|week$"):
-            quit("Error: Invalid value for forecast".fgRed, 1)
+            quit("Error: Invalid value for forecast", 1)
         if allowPerms.used:
             locationPermissions = true
         if help.used:
